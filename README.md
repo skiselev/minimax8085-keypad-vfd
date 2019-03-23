@@ -1,6 +1,14 @@
 # minimax8085-keypad-vfd
 VFD and keypad extension board for the minimax 8085
 
+## Hardware Documentation
+
+### Schematic and PCB Layout
+
+[Schematic - Version 1.0](KiCad/MiniMax8085-Keypad-VFD-Schematic-1.0.pdf)
+
+[PCB Layout - Version 1.0](KiCad/MiniMax8085-Keypad-VFD-Board-1.0.pdf)
+
 ### Bill of Materials
 
 #### Version 1.0
