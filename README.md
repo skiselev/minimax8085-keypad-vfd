@@ -1,6 +1,8 @@
 # minimax8085-keypad-vfd
 Keypad and VFD extension board for the MiniMax 8085 SBC
 
+![MiniMax8085 with Keypad and VFD](images/MiniMax8085-Keypad_and_VFD.jpg)
+
 ## Hardware Documentation
 
 ### Schematic and PCB Layout
