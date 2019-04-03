@@ -22,10 +22,10 @@ Keypad and VFD extension board for the MiniMax 8085 SBC
 Component type     | Reference  | Description                                 | Quantity | Possible sources and notes 
 ------------------ | ---------- | ------------------------------------------- | -------- | --------------------------
 PCB                |            | MiniMax 8085 VFD & Keypad PCB               | 1        | Order from a PCB manufacturer of your choice using provided Gerber or KiCad files
-Integrated Circut  | U1         | 74C923 20-key encoder, DIP-18               | 1        | eBay
+Integrated Circut  | U1         | 74C923 20-key encoder, DIP-20               | 1        | eBay
 Integrated Circut  | U2         | 74HCT138 3-to-8 line decoder, DIP-16        | 1        | Mouser [595-SN74HCT138N](https://www.mouser.com/ProductDetail/595-SN74HCT138N)<br>Note: Possible replacements: 74LS138, 74HC138, 74ALS138
 Integrated Circut  | U3         | 74HCT32 quad 2-input OR gate, DIP-14        | 1        | Mouser [595-SN74HCT32N](https://www.mouser.com/ProductDetail/595-SN74HCT32N)<br>Note: Possible replacements: 74LS32, 74HC32, 74ALS32
-IC Socket          | U1         | DIP-18, 300 mil socket                      | 1        | Mouser [517-4818-3000-CP](https://www.mouser.com/ProductDetail/517-4818-3000-CP)
+IC Socket          | U1         | DIP-20, 300 mil socket                      | 1        | Mouser [517-4820-3000-CP](https://www.mouser.com/ProductDetail/517-4820-3000-CP)
 IC Socket          | U2         | DIP-16, 300 mil socket                      | 1        | Mouser [517-4816-3000-CP](https://www.mouser.com/ProductDetail/517-4816-3000-CP)
 IC Socket          | U3         | DIP-14, 300 mil socket                      | 1        | Mouser [517-4814-3000-CP](https://www.mouser.com/ProductDetail/517-4814-3000-CP)
 Tactile Switch     | SW1 - SW20 | 12x12mm tactile switch, projected type (Omron B3F-4050, Omron B3F-5050) | 20       | Mouser [653-B3F-4050](https://www.mouser.com/ProductDetail/653-B3F-4050), [653-B3F-5050](https://www.mouser.com/ProductDetail/653-B3F-5050)
