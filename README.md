@@ -11,6 +11,28 @@ Keypad and VFD extension board for the MiniMax 8085 SBC
 
 [PCB Layout - Version 1.0](KiCad/MiniMax8085-Keypad-VFD-Board-1.0.pdf)
 
+### Design Description
+
+#### Address Decode / Chip Select
+
+The Keypad and VFD extension board uses 74HCT138 3-to-8 decoder and 74HCT32 quad 2-input OR gate ICs for address decode:
+* Enable signal G1 of 74HCT138 is connected to IO/M signal, and therefore the decoder is enabled only during I/O operations, when IO/M signal value is HIGH
+* Enable signals /G2A and /G2B of 74HCT138 are connected to address lines A6 and A7, so that decoder is enabled when both of these signals are low - 0x00 - 0x3F address range
+* Inputs A-C of 74HCT138 are connected to address lines A3 - A4, therefore each output of 74HCT138 is active (LOW) for a block of 8 consequitive I/O addresses, /Y0 - for 0x00-0x07, /Y1 - for 0x08-0x0F, ... , /Y6 for 0x30-0x37, and /Y6 for 0x38-0x3F
+* Output /Y6 of 74HCT138 is connected to the input of the OR gate U3C, another input of that gate is connected to /RD signal. As the result, the output of the gate U3C - /KPD_RD is active (LOW) during read cycles from 0x30-0x37 I/O range. /KPD_RD is used as the read signal for the keypad encoder
+* Output /Y7 of 74HCT138 is connected to inputs of the OR gate U3A and U3B. The second input of the OR gate U3B is connected to /RD signal, so that the output of U3B - /VFD_RD is active (LOW) during read cycles from 0x38-0x3F I/O range. /VFD_RD is used as the read signal for the VFD module. The second input of the OR gate U3A is connected to /WR signal, so that the output of U3A - /VFD_WR is active (LOW) during write cycles to 0x38-0x3F I/O range. /VFD_WR is used as the write signal for the VFD module
+
+#### VFD Interface
+
+The VFD is configured in Intel 8000 mode (using a solder link on the module), and the interface is staright-forward:
+* Data lines DB0-DB7 of the VFD modules are connected to AD0-AD7 signals
+* Register select input RS of the VFD module is connected to address line A0, therefore writing to even addresses in 0x38-0x3F range, writes the command register, while writing or reading odd addresses goes to DDRAM (display memory) or CGRAM (character generator memory)
+* /RD and /WR inputs of the VFD module are connected to /VFD_RD and /VFD_WR signals respectfully
+
+#### Keypad Interface
+
+The Keypad and VFD extension board uses 74C923 20-key encoder for scanning the keypad. When this IC detects that a keypad button has been pressed, it activates D_AVAIL output, connected to the RST7_5 interrupt signal, resulting in an interrupt to the 8085 CPU. The interrupt service routine can then read the keypad button code from I/O ports in range 0x30-0x37. Only AD0-AD5 data lines are used, therefore the 0x1F AND mask should be applied by the interrupt service routine to the value read from the port.
+
 ### Bill of Materials
 
 #### Version 1.0
