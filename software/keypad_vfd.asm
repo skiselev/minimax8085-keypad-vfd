@@ -2,7 +2,7 @@
 ; It assumed that the code runs from RAM under MON85
 ; Use the following MON85 commands to run the code:
 ; U 8000
-; G 8040
+; G 8000
 
 ; Program start address
 START_ADDR		EQU		8000h			; Start address when running from MON85
