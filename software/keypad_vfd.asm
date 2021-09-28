@@ -98,7 +98,7 @@ USART_OUT_WAIT:	IN		USART_CMD
 ; Initialize VFD
 ; Note:		Some parameters below are display specific
 VFD_INIT:		PUSH	PSW
-				MVI		A,18h			; Set interface data length to 8 bits,
+				MVI		A,38h			; Set interface data length to 8 bits,
 				CALL	VFD_SEND_CMD	; two lines, 5x8 dots characters
 				MVI		A,01h			; Clear display, reset address to 0
 				CALL	VFD_SEND_CMD
