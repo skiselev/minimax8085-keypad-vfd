@@ -1,5 +1,10 @@
 # minimax8085-keypad-vfd
-Keypad and VFD extension board for the MiniMax 8085 SBC
+Keypad and VFD (vacuum fluorescent display) extension board for the MiniMax 8085 SBC
+
+## Introduction
+
+The Keypad and VFD extension board provides simple 20-key keypad and display for [MiniMax8085 SBC](https://github.com/skiselev/minimax8085).
+It is designed to be plugged on the top of MiniMax8085 using 2x20 pin header / pin socket.
 
 ![MiniMax8085 with Keypad and VFD](images/MiniMax8085-Keypad_and_VFD.jpg)
 
@@ -24,14 +29,14 @@ The Keypad and VFD extension board uses 74HCT138 3-to-8 decoder and 74HCT32 quad
 
 #### VFD Interface
 
-The VFD is configured in Intel 8000 mode (using a solder link on the module), and the interface is staright-forward:
+The board is designed to interface to a [Noritake CU24025-UW1J](https://www.noritake-elec.com/products/model?part=CU24025-UW1J) or similar VFD module, that is configured in Intel 8000 mode (using a solder link on the module), and the interface is staright-forward:
 * Data lines DB0-DB7 of the VFD modules are connected to AD0-AD7 signals
 * Register select input RS of the VFD module is connected to address line A0, therefore writing to even addresses in 0x38-0x3F range, writes the command register, while writing or reading odd addresses goes to DDRAM (display memory) or CGRAM (character generator memory)
 * /RD and /WR inputs of the VFD module are connected to /VFD_RD and /VFD_WR signals respectfully
 
 #### Keypad Interface
 
-The Keypad and VFD extension board uses 74C923 20-key encoder for scanning the keypad. When this IC detects that a keypad button has been pressed, it activates D_AVAIL output, connected to the RST7_5 interrupt signal, resulting in an interrupt to the 8085 CPU. The interrupt service routine can then read the keypad button code from I/O ports in range 0x30-0x37. Only AD0-AD5 data lines are used, therefore the 0x1F AND mask should be applied by the interrupt service routine to the value read from the port.
+The Keypad and VFD extension board uses [74C923](doc/Fairchild-MM74C922-MM74C923-Datasheet.pdf) 20-key encoder for scanning the keypad. When this IC detects that a keypad button has been pressed, it activates D_AVAIL output, connected to the RST7_5 interrupt signal, resulting in an interrupt to the 8085 CPU. The interrupt service routine can then read the keypad button code from I/O ports in range 0x30-0x37. Only AD0-AD5 data lines are used, therefore the 0x1F AND mask should be applied by the interrupt service routine to the value read from the port.
 
 ### Bill of Materials
 
@@ -69,79 +74,108 @@ Cable              |            | 14 wire ribbon cable, 28AWG                 | 
 
 ## Programming Keypad and VFD Extension Board
 
+### Keypad
+
+The [74C923](doc/Fairchild-MM74C922-MM74C923-Datasheet.pdf) keypad encoder is connected to the 8085 processor so that it generates RST 7.5 interrupt when a key is pressed. The key code then can be read from the I/O port 0x30. Only lower 5 bits are used for the key code, and the upper 3 bits are undefined, therefore it is recommended to AND the read value with 0x1F mask. For example:
+<pre><code>
+        IN      30h
+        ANI     1Fh
+</code></pre>
+Before using keypad, make sure to unmask RST 7.5 and enable interrupts:
+<pre><code>
+        MVI     A,1Bh    ; 1Bh = 00011011b - Reset RST 7.5 flip-flop, set interrupt mask, unmask RST 7.5, keep RST 5.5 and RST 6.5 masked
+        SIM              ; set interrupt mask
+        EI               ; enable interrupts
+</code></pre>
+
+### VFD
+
+The [Noritake CU24025-UW1J](https://www.noritake-elec.com/products/model?part=CU24025-UW1J) and similar VFD displays are programmed similarly to LCD displays based on [Hitachi HD44780 LCD controller](https://en.wikipedia.org/wiki/Hitachi_HD44780_LCD_controller). The programming infromation is available in [Noritake CU24025-UW1J datasheet](doc/Noritake-CU24025-UW1J-Datasheet.pdf). Multiple Hitachi HD44780 programming examples are also available in the Internet.
+
+The VFD display uses two I/O ports:
+* 0x38 - VFD_CMD - used to write commands to the VFD controller, and read back the *BUSY* flag and the *address counter*
+* 0x39 - VFD_DATA - used to write data to the VFD controller's display memory (DDRAM) or character generator memory (CGRAM)
+
+#### VFD Initialization
+Prior to displaying text, the VFD display needs to be initialized by sending the following commands (see the [Noritake CU24025-UW1J datasheet](doc/Noritake-CU24025-UW1J-Datasheet.pdf) for more details and options):
+1. Write 0x38 to VFD_CMD: Function Set: 8-bit interface; Two lines; 5x7 characters
+2. Write 0x0C to VFD_CMD: Display on/off control: Display power on; No cursor; No cursor blink
+3. Write 0x01 to VFD_CMD: Clear display; Return cursor to the home position
+4. Write 0x06 to VFD_CMD: Entry Mode: Left to Right; No scroll
+
+After this initialization sequence, the characters written to port VFD_DATA will be displayed on the VFD.
+
+#### Using programmable character generator
+The VFD provides eight user-programmable characters. These characters have ASCII codes from 0 to 7. The VFD controller contains Character Generator RAM (CGRAM) that holds the bitmaps for the user-programmable characters. The CGRAM can be programmed by sending "Set CGRAM address" command. This command's code is 0x40 + CGRAM address. Here are the "Set CGRAM address" commands with corresponding addresses for each of the user programmable characters:
+* 0x40 to 0x47 - character with code 0
+* 0x48 to 0x4F - character with code 1
+* 0x50 to 0x57 - character with code 2
+* 0x58 to 0x5F - character with code 3
+* 0x60 to 0x67 - character with code 4
+* 0x68 to 0x6F - character with code 5
+* 0x70 to 0x77 - character with code 6
+* 0x78 to 0x7F - character with code 7
+
+After issuing "Set CGRAM address" command, the character bit map can be set using port 0x39. After writing each byte the CGRAM address is automatically incremented by the controller. Here is an example of programming a smiley face character:
+Character bitmap:
+
+Pixels | Binary	| Hexadecimal
+------ | ------ | ----------- 
+ ░░░░░ | 00000 | 0x00
+ ░█░█░| 01010 | 0x0A
+ ░░░░░| 00000 | 0x00
+ ░░░░░| 00000 | 0x00
+ █░░░█| 10001 | 0x11
+ ░███░| 01110 | 0x0E
+ ░░░░░| 00000 | 0x00
+
+Commands to program the character in MON85:
+* C> **o 38 80** - set DDRAM to the first character
+* C> **o 39 00** - print the first programmable character
+* C> **o 38 40** - set CGRAM to the first programmable character
+* C> **o 39 00** - character data - upper row
+* C> **o 39 0A** - character data - 2nd row
+* C> **o 39 00** - character data - 3rd row
+* C> **o 39 00** - character data - 4th row
+* C> **o 39 11** - character data - 5th row
+* C> **o 39 0E** - character data - 6th row
+* C> **o 39 00** - character data - 7th row
+* C> **o 39 00** - no underline
+* C> **o 38 81** - set DDRAM to the correct position because modifying CGRAM moves the cursor
+
 ### Keypad and VFD Sample Code
 
-This program echoes pressed keypad keys on the console and VFD display
+The [keypad_vfd.asm](software/keypad_vfd.asm) sample reads pressed key from the keypad and prints it on the VFD display. It consists of the following parts:
+* Initialization:
+  * Sets the inital stack pointer (SP) value. This is needed when the sample is run directly from ROM
+  * Calls USART_INIT subroutine to initialize the Intel 8251 USART
+  * Calls VFD_INIT subroutine to initialize the VFD
+  * Unmasks RST 7.5 interrupt and enables interrupts
+* Loop:
+  * Calls USART_IN to read a character from USART
+  * Compares that to ESC code, and exists to MON85 by calling RST 0 if that is the case
+* Keypad / RST 7.5 interrupt handler:
+  * Reads key code from keypad
+  * Calculates the corresponding ASCII character code
+  * Outputs the character to USART using USART_OUT subroutine
+  * Outputs the character to VFD using VFD_SEND_DATA subroutine
+  * Re-enables interrupts and returns
+* Generic routines for USART and VFD initialization and I/O
+  * USART_INIT subroutine - initializes the Intel 8251 USART
+  * USART_IN subroutine - waits for a character to be recieved by the UART, reads and returns it
+  * USART_OUT subroutine - sends the character using the UART
+  * VFD_INIT subroutine - initializes the VFD, clears the display, and sets cursor parameters
+  * VFD_SEND_CMD subroutine - writes command to the VFD
+  * VFD_SEND_DATA subroutine - writes data byte to the VFD
 
-<pre><code>
-; Input keys from keypad and display them on VFD
-; It assumed that the code runs from RAM under MON85
-; Use the following MON85 commands to run the code:
-; U 8000
-; G 8040
+#### Running the sample from MON85
 
-; USART registers
-USART_DATA     EQU     08h
-USART_CMD      EQU     09h
-; Keypad and VFD registers
-KEYPAD_DATA    EQU     30h
-VFD_CMD        EQU     38h
-VFD_DATA       EQU     39h
+Use the following commands to run the sample:
+* C> **L** - Load hex file. Type *L* following by *Enter*, then copy and paste the content of [keypad_vfd.hex](software/keypad_vfd.hex) file. This will load the sample to the RAM starting at 0x8000
+* C> **U 8000** - Set user area. This command sets RST vectors redirection to 0x8000. This way when the keypad generates RST 7.5 hardware interrupt, it will call 803Ch location
+* C> **R 8000** - Runs the code starting at 0x8000
+* Push buttons on the keypad, they should be printed on the VFD screen as well as on the serial console. Press *ESC* button on the keyboard to exit the sample and return to MON85
 
-;Assembly                                Address  Opcode
-
-; RST75 - RST 7.5 Hardware interrupt vector
-RST75:          JMP     KEYPAD_ISR      ; 803C    C3 60 80
-                NOP                     ; 803F    00
-; Initialize VFD display
-START:          MVI     A,06H           ; 8040    3E 06
-                OUT     VFD_CMD         ; 8042    D3 38
-                MVI     A,0FH           ; 8044    3E 0F
-                OUT     VFD_CMD         ; 8046    D3 38
-                MVI     A,80H           ; 8048    3E 80
-                OUT     VFD_CMD         ; 804A    D3 38
-; Unmask RST 7.5
-                MVI     A,1BH           ; 804C    3E 1B
-                SIM                     ; 804E    30
-; Enable interrupts
-                EI                      ; 804F    FB
-; Loop - wait for ESC key
-ESC_WAIT:       IN      USART_CMD       ; 8050    DB 09
-; Wait for RxRDY
-                ANI     02H             ; 8052    E6 02
-                JZ      ESC_WAIT        ; 8054    CA 50 80
-                IN      USART_DATA      ; 8057    DB 08
-; Is it ESC?
-                CPI     1BH             ; 8059    FE 1B
-                JNZ     ESC_WAIT        ; 805B    C2 50 80
-; Exit to MON85
-                RST     0               ; 805E    C7
-                NOP                     ; 805F    00
-
-; Keypad interrupt service routine                
-KEYPAD_ISR:     PUSH PSW                ; 8060    F5
-                IN      KEYPAD_DATA     ; 8061    DB 30
-; Keypad outputs only lower 5 bits, reset higher bits
-                ANI     1FH             ; 8063    E6 1F
-; Convert to ASCII / Hexadecimal
-                ADI     30H             ; 8065    C6 30
-; Is it a digit (0-9)?
-                CPI     3AH             ; 8067    FE 3A
-                JC      PRINT_CHAR      ; 8069    DA 6E 80
-; Otherwise show a letter (A-J)
-                ADI     07H             ; 806C    C6 07
-PRINT_CHAR:     PUSH    PSW             ; 806E    F5
-; Wait for TxRDY
-USART_WAIT:     IN      USART_CMD       ; 806F    DB 09
-                ANI     01H             ; 8071    E6 01
-                JZ      USART_WAIT      ; 8073    CA 6F 80
-                POP     PSW             ; 8076    F1
-; Write character to USART
-                OUT     USART_CMD       ; 8077    D3 08
-; Write charatcer to VFD
-                OUT     VFD_DATA        ; 8079    D3 39
-                POP     PSW             ; 807B    F1
-; Re-enable interrupts
-                EI                      ; 807C    FB
-                RET                     ; 807D    C9
-</code></pre>
+#### Files
+* [keypad_vfd.asm](software/keypad_vfd.asm)
+* [keypad_vfd.hex](software/keypad_vfd.hex)
