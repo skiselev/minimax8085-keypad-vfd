@@ -66,3 +66,82 @@ VFD Display        |            | 2x24 VFD character display                  | 
 Header             |            | 2x7 pin header, 2.54 mm pitch, straight     | 1        | Mouser [649-67996-114HLF](https://www.mouser.com/ProductDetail/649-67996-114HLF)<br>Note: Solder this header to the VFD module
 Connector          |            | 2x7 pin IDC socket, 2.54 mm pitch           | 2        | Mouser [517-D89114-0131HK](https://www.mouser.com/ProductDetail/517-D89114-0131HK)
 Cable              |            | 14 wire ribbon cable, 28AWG                 | 1 ft.    | Mouser [517-3365-14FT](https://www.mouser.com/ProductDetail/517-3365-14FT)
+
+## Programming Keypad and VFD Extension Board
+
+### Keypad and VFD Sample Code
+
+This program echoes pressed keypad keys on the console and VFD display
+
+<pre><code>
+; Input keys from keypad and display them on VFD
+; It assumed that the code runs from RAM under MON85
+; Use the following MON85 commands to run the code:
+; U 8000
+; G 8040
+
+; USART registers
+USART_DATA     EQU     08h
+USART_CMD      EQU     09h
+; Keypad and VFD registers
+KEYPAD_DATA    EQU     30h
+VFD_CMD        EQU     38h
+VFD_DATA       EQU     39h
+
+;Assembly                                Address  Opcode
+
+; RST75 - RST 7.5 Hardware interrupt vector
+RST75:          JMP     KEYPAD_ISR      ; 803C    C3 60 80
+                NOP                     ; 803F    00
+; Initialize VFD display
+START:          MVI     A,06H           ; 8040    3E 06
+                OUT     VFD_CMD         ; 8042    D3 38
+                MVI     A,0FH           ; 8044    3E 0F
+                OUT     VFD_CMD         ; 8046    D3 38
+                MVI     A,80H           ; 8048    3E 80
+                OUT     VFD_CMD         ; 804A    D3 38
+; Unmask RST 7.5
+                MVI     A,1BH           ; 804C    3E 1B
+                SIM                     ; 804E    30
+; Enable interrupts
+                EI                      ; 804F    FB
+; Loop - wait for ESC key
+ESC_WAIT:       IN      USART_CMD       ; 8050    DB 09
+; Wait for RxRDY
+                ANI     02H             ; 8052    E6 02
+                JZ      ESC_WAIT        ; 8054    CA 50 80
+                IN      USART_DATA      ; 8057    DB 08
+; Is it ESC?
+                CPI     1BH             ; 8059    FE 1B
+                JNZ     ESC_WAIT        ; 805B    C2 50 80
+; Exit to MON85
+                RST     0               ; 805E    C7
+                NOP                     ; 805F    00
+
+; Keypad interrupt service routine                
+KEYPAD_ISR:     PUSH PSW                ; 8060    F5
+                IN      KEYPAD_DATA     ; 8061    DB 30
+; Keypad outputs only lower 5 bits, reset higher bits
+                ANI     1FH             ; 8063    E6 1F
+; Convert to ASCII / Hexadecimal
+                ADI     30H             ; 8065    C6 30
+; Is it a digit (0-9)?
+                CPI     3AH             ; 8067    FE 3A
+                JC      PRINT_CHAR      ; 8069    DA 6E 80
+; Otherwise show a letter (A-J)
+                ADI     07H             ; 806C    C6 07
+PRINT_CHAR:     PUSH    PSW             ; 806E    F5
+; Wait for TxRDY
+USART_WAIT:     IN      USART_CMD       ; 806F    DB 09
+                ANI     01H             ; 8071    E6 01
+                JZ      USART_WAIT      ; 8073    CA 6F 80
+                POP     PSW             ; 8076    F1
+; Write character to USART
+                OUT     USART_CMD       ; 8077    D3 08
+; Write charatcer to VFD
+                OUT     VFD_DATA        ; 8079    D3 39
+                POP     PSW             ; 807B    F1
+; Re-enable interrupts
+                EI                      ; 807C    FB
+                RET                     ; 807D    C9
+</code></pre>
