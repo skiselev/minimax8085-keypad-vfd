@@ -173,7 +173,7 @@ The [keypad_vfd.asm](software/keypad_vfd.asm) sample reads pressed key from the 
 Use the following commands to run the sample:
 * C> **L** - Load hex file. Type *L* following by *Enter*, then copy and paste the content of [keypad_vfd.hex](software/keypad_vfd.hex) file. This will load the sample to the RAM starting at 0x8000
 * C> **U 8000** - Set user area. This command sets RST vectors redirection to 0x8000. This way when the keypad generates RST 7.5 hardware interrupt, it will call 803Ch location
-* C> **R 8000** - Runs the code starting at 0x8000
+* C> **G 8000** - Runs the code starting at 0x8000
 * Push buttons on the keypad, they should be printed on the VFD screen as well as on the serial console. Press *ESC* button on the keyboard to exit the sample and return to MON85
 
 #### Files
